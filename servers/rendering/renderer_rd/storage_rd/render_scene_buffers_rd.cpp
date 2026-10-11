@@ -183,13 +183,15 @@ void RenderSceneBuffersRD::configure(const RenderSceneBuffersConfiguration *p_co
 
 	// Create our color buffer.
 	const bool resolve_target = msaa_3d != RSE::VIEWPORT_MSAA_DISABLED;
-	create_texture(RB_SCOPE_BUFFERS, RB_TEX_COLOR, get_base_data_format(), get_color_usage_bits(resolve_target, false, can_be_storage));
+	// Mobile reads scene color and depth only within the frame, so tile memory need not be stored.
+	const bool discardable = !can_be_storage;
+	create_texture(RB_SCOPE_BUFFERS, RB_TEX_COLOR, get_base_data_format(), get_color_usage_bits(resolve_target, false, can_be_storage), RD::TEXTURE_SAMPLES_1, Size2i(), 0, 1, true, discardable);
 
 	// TODO: Detect when it is safe to use RD::TEXTURE_USAGE_TRANSIENT_BIT for RB_TEX_DEPTH, RB_TEX_COLOR_MSAA and/or RB_TEX_DEPTH_MSAA.
 	// (it means we cannot sample from it, we cannot copy from/to it) to save VRAM (and maybe performance too).
 
 	// Create our depth buffer.
-	create_texture(RB_SCOPE_BUFFERS, RB_TEX_DEPTH, get_depth_format(resolve_target, false, can_be_storage), get_depth_usage_bits(resolve_target, false, can_be_storage));
+	create_texture(RB_SCOPE_BUFFERS, RB_TEX_DEPTH, get_depth_format(resolve_target, false, can_be_storage), get_depth_usage_bits(resolve_target, false, can_be_storage), RD::TEXTURE_SAMPLES_1, Size2i(), 0, 1, true, discardable);
 
 	// Create our MSAA buffers.
 	if (msaa_3d == RSE::VIEWPORT_MSAA_DISABLED) {

@@ -1649,6 +1649,7 @@ Error RenderingDeviceDriverVulkan::_initialize_device(const LocalVector<VkDevice
 			device_functions.CreateSamplerYcbcrConversion = PFN_vkCreateSamplerYcbcrConversion(functions.GetDeviceProcAddr(vk_device, "vkCreateSamplerYcbcrConversion"));
 			device_functions.DestroySamplerYcbcrConversion = PFN_vkDestroySamplerYcbcrConversion(functions.GetDeviceProcAddr(vk_device, "vkDestroySamplerYcbcrConversion"));
 			device_functions.GetAndroidHardwareBufferPropertiesANDROID = PFN_vkGetAndroidHardwareBufferPropertiesANDROID(functions.GetDeviceProcAddr(vk_device, "vkGetAndroidHardwareBufferPropertiesANDROID"));
+			android_hardware_buffer_support = functions.GetPhysicalDeviceImageFormatProperties2 && device_functions.CreateSamplerYcbcrConversion && device_functions.DestroySamplerYcbcrConversion && device_functions.GetAndroidHardwareBufferPropertiesANDROID;
 		}
 #endif
 

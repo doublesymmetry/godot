@@ -767,6 +767,10 @@ Error RenderingContextDriverVulkan::_initialize_instance() {
 		if (functions.GetPhysicalDeviceProperties2 == nullptr) {
 			functions.GetPhysicalDeviceProperties2 = PFN_vkGetPhysicalDeviceProperties2(vkGetInstanceProcAddr(instance, "vkGetPhysicalDeviceProperties2KHR"));
 		}
+
+		if (functions.GetPhysicalDeviceImageFormatProperties2 == nullptr) {
+			functions.GetPhysicalDeviceImageFormatProperties2 = PFN_vkGetPhysicalDeviceImageFormatProperties2(vkGetInstanceProcAddr(instance, "vkGetPhysicalDeviceImageFormatProperties2KHR"));
+		}
 	}
 
 	// Device.

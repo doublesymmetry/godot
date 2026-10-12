@@ -1024,6 +1024,7 @@ SceneShaderForwardMobile::~SceneShaderForwardMobile() {
 
 	RD::get_singleton()->free_rid(default_vec4_xform_buffer);
 	RD::get_singleton()->free_rid(default_material_feedback_buffer);
+	RD::get_singleton()->free_rid(shadow_sampler);
 
 	material_storage->shader_free(overdraw_material_shader);
 	material_storage->shader_free(default_shader);
@@ -1032,7 +1033,4 @@ SceneShaderForwardMobile::~SceneShaderForwardMobile() {
 	material_storage->material_free(overdraw_material);
 	material_storage->material_free(default_material);
 	material_storage->material_free(debug_shadow_splits_material);
-
-	// Shaders bake this sampler as immutable, so it must outlive them.
-	RD::get_singleton()->free_rid(shadow_sampler);
 }

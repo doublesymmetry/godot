@@ -4402,9 +4402,6 @@ RID RenderingDevice::shader_create_from_bytecode_with_samplers(const Vector<uint
 	shader->layout_hash = driver->shader_get_layout_hash(shader_id);
 
 	for (const PipelineImmutableSampler &sampler : p_immutable_samplers) {
-		for (const RID &sampler_id : sampler.samplers) {
-			_add_dependency(id, sampler_id);
-		}
 		shader->immutable_samplers.insert((uint64_t(sampler.set) << 32) | sampler.binding);
 	}
 
@@ -9263,7 +9260,6 @@ void RenderingDevice::finalize() {
 	_free_rids(vertex_buffer_owner, "VertexBuffer");
 	_free_rids(framebuffer_owner, "Framebuffer");
 	for (const KeyValue<uint64_t, RID> &sampler : external_samplers) {
-		_free_dependencies(sampler.value);
 		sampler_owner.free(sampler.value);
 	}
 	external_samplers.clear();

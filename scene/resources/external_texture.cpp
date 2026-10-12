@@ -34,6 +34,10 @@
 #include "core/object/class_db.h"
 #include "servers/rendering/rendering_server.h"
 
+#ifdef RD_ENABLED
+#include "servers/rendering/rendering_device.h"
+#endif
+
 static bool _uses_rendering_device() {
 #ifdef RD_ENABLED
 	return RenderingServer::get_singleton()->get_rendering_device() != nullptr;
@@ -105,14 +109,22 @@ void ExternalTexture::set_external_buffer_id(uint64_t p_external_buffer) {
 Error ExternalTexture::submit_hardware_buffer(uint64_t p_buffer, ColorModel p_color_model, ColorRange p_color_range, const Rect2i &p_crop, const Callable &p_completion) {
 	ERR_FAIL_INDEX_V(p_color_model, COLOR_MODEL_BT2020 + 1, ERR_INVALID_PARAMETER);
 	ERR_FAIL_INDEX_V(p_color_range, COLOR_RANGE_NARROW + 1, ERR_INVALID_PARAMETER);
+	ERR_FAIL_COND_V_MSG(p_buffer == 0, ERR_INVALID_PARAMETER, "The hardware buffer handle must be nonzero.");
+#ifdef RD_ENABLED
+	RenderingDevice *rd = RenderingServer::get_singleton()->get_rendering_device();
+	ERR_FAIL_COND_V_MSG(!rd || !rd->has_feature(RenderingDevice::SUPPORTS_ANDROID_HARDWARE_BUFFER), ERR_UNAVAILABLE, "Android hardware buffers are not supported by this rendering device.");
 	MutexLock lock(mutex);
 	_ensure_created();
-	Error error = RenderingServer::get_singleton()->texture_external_submit(texture, p_buffer, RSE::ExternalTextureColorModel(p_color_model), RSE::ExternalTextureColorRange(p_color_range), p_crop, p_completion, callable_mp(this, &ExternalTexture::_hardware_buffer_changed));
-	if (error == OK && !using_hardware_buffer) {
+	rd->external_buffer_acquire(p_buffer);
+	RenderingServer::get_singleton()->texture_external_submit(texture, p_buffer, RSE::ExternalTextureColorModel(p_color_model), RSE::ExternalTextureColorRange(p_color_range), p_crop, p_completion, callable_mp(this, &ExternalTexture::_hardware_buffer_changed));
+	if (!using_hardware_buffer) {
 		resolved_size = Size2i(size);
 		using_hardware_buffer = true;
 	}
-	return error;
+	return OK;
+#else
+	return ERR_UNAVAILABLE;
+#endif
 }
 
 int ExternalTexture::get_width() const {

@@ -254,6 +254,21 @@ private:
 
 	void _texture_format_from_rd(RD::DataFormat p_rd_format, TextureFromRDFormat &r_format);
 
+	struct ExternalTextureSubmission : public RefCounted {
+		GDSOFTCLASS(ExternalTextureSubmission, RefCounted);
+
+	public:
+		uint64_t buffer = 0;
+		RSE::ExternalTextureColorModel color_model = RSE::EXTERNAL_TEXTURE_COLOR_MODEL_AUTOMATIC;
+		RSE::ExternalTextureColorRange color_range = RSE::EXTERNAL_TEXTURE_COLOR_RANGE_AUTOMATIC;
+		Rect2i crop;
+		Callable completion;
+		Callable changed;
+
+		void complete(int p_status);
+		~ExternalTextureSubmission();
+	};
+
 	struct ExternalTextures {
 		struct PushConstant {
 			float uv_offset[2];
@@ -625,7 +640,7 @@ public:
 	virtual void texture_2d_update(RID p_texture, const Ref<Image> &p_image, int p_layer = 0) override;
 	virtual void texture_3d_update(RID p_texture, const Vector<Ref<Image>> &p_data) override;
 	virtual void texture_external_update(RID p_texture, int p_width, int p_height, uint64_t p_external_buffer) override;
-	virtual void texture_external_submit(RID p_texture, const Ref<ExternalTextureSubmission> &p_submission) override;
+	virtual void texture_external_submit(RID p_texture, uint64_t p_buffer, RSE::ExternalTextureColorModel p_color_model, RSE::ExternalTextureColorRange p_color_range, const Rect2i &p_crop, const Callable &p_completion, const Callable &p_changed) override;
 	virtual void update_external_textures() override;
 	virtual void texture_proxy_update(RID p_proxy, RID p_base) override;
 

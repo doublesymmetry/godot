@@ -1760,10 +1760,34 @@ void TextureStorage::texture_external_update(RID p_texture, int p_width, int p_h
 	ERR_FAIL_COND_MSG(p_external_buffer != 0, "External buffer IDs are only supported by the Compatibility renderer. Use ExternalTexture.submit_hardware_buffer() instead.");
 }
 
-void TextureStorage::texture_external_submit(RID p_texture, const Ref<ExternalTextureSubmission> &p_submission) {
+void TextureStorage::ExternalTextureSubmission::complete(int p_status) {
+	if (buffer == 0) {
+		return;
+	}
+	RenderingDevice::get_singleton()->external_buffer_release(buffer);
+	buffer = 0;
+	if (completion.is_valid()) {
+		MessageQueue::get_main_singleton()->push_callable(completion, p_status);
+	}
+}
+
+TextureStorage::ExternalTextureSubmission::~ExternalTextureSubmission() {
+	complete(int(RSE::EXTERNAL_TEXTURE_COMPLETION_DROPPED));
+}
+
+void TextureStorage::texture_external_submit(RID p_texture, uint64_t p_buffer, RSE::ExternalTextureColorModel p_color_model, RSE::ExternalTextureColorRange p_color_range, const Rect2i &p_crop, const Callable &p_completion, const Callable &p_changed) {
+	Ref<ExternalTextureSubmission> submission;
+	submission.instantiate();
+	submission->buffer = p_buffer;
+	submission->color_model = p_color_model;
+	submission->color_range = p_color_range;
+	submission->crop = p_crop;
+	submission->completion = p_completion;
+	submission->changed = p_changed;
 	Texture *tex = texture_owner.get_or_null(p_texture);
 	ERR_FAIL_COND_MSG(!tex || !tex->is_external || tex->is_proxy, "The external texture was freed or replaced before its buffer submission was processed.");
-	external_textures.pending.insert(p_texture, p_submission);
+	external_textures.pending.insert(p_texture, submission);
+	RenderingServerDefault::redraw_request();
 }
 
 void TextureStorage::update_external_textures() {

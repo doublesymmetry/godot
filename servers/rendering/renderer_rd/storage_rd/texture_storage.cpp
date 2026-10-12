@@ -1939,8 +1939,8 @@ Error TextureStorage::_texture_external_convert(RID p_texture, const Ref<Externa
 	if (replacement.is_valid()) {
 		texture_replace(p_texture, replacement);
 		tex = texture_owner.get_or_null(p_texture);
-		MessageQueue::get_main_singleton()->push_callable(p_submission->changed, crop.size);
 	}
+	MessageQueue::get_main_singleton()->push_callable(p_submission->changed, crop.size);
 #ifdef TOOLS_ENABLED
 	tex->image_cache_2d.unref();
 #endif

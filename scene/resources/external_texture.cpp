@@ -177,6 +177,9 @@ void ExternalTexture::_ensure_created() const {
 void ExternalTexture::_hardware_buffer_changed(const Size2i &p_size) {
 	{
 		MutexLock lock(mutex);
+		if (resolved_size == p_size) {
+			return;
+		}
 		resolved_size = p_size;
 	}
 	emit_changed();

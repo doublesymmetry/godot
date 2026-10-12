@@ -372,7 +372,6 @@ public:
 		bool is_subsampled = false;
 		bool has_initial_data = false;
 		bool is_external = false;
-		RID external_sampler;
 		bool pending_clear = false;
 
 		BitField<RDD::TextureAspectBits> read_aspect_flags = {};
@@ -734,11 +733,7 @@ public:
 	/**** SAMPLER ****/
 	/*****************/
 private:
-	struct Sampler {
-		RDD::SamplerID driver_id;
-		bool is_external = false;
-	};
-	RID_Owner<Sampler, true> sampler_owner;
+	RID_Owner<RDD::SamplerID, true> sampler_owner;
 	HashMap<uint64_t, RID> external_samplers;
 
 public:
@@ -980,7 +975,7 @@ private:
 		uint32_t layout_hash = 0;
 		BitField<RDD::PipelineStageBits> stage_bits = {};
 		Vector<uint32_t> set_formats;
-		HashMap<uint64_t, RID> immutable_samplers;
+		HashSet<uint64_t> immutable_samplers;
 	};
 
 	String _shader_uniform_debug(RID p_shader, int p_set = -1);

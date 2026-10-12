@@ -1865,6 +1865,40 @@ Error TextureStorage::_texture_external_convert(RID p_texture, const Ref<Externa
 		return ERR_CANT_CREATE;
 	}
 
+	ExternalTextures::Pipeline *conversion = external_textures.pipelines.getptr(sampler);
+	if (!conversion) {
+		Vector<uint8_t> bytecode = external_textures.shader.version_get_shader_bytecode(external_textures.shader_version, 0);
+		RD::PipelineImmutableSampler immutable;
+		immutable.uniform_type = RD::UNIFORM_TYPE_SAMPLER_WITH_TEXTURE;
+		immutable.samplers.push_back(sampler);
+		RID shader = rd->shader_create_from_bytecode_with_samplers(bytecode, RID(), Vector<RD::PipelineImmutableSampler>({ immutable }));
+		if (shader.is_null()) {
+			rd->free_rid(imported);
+			ERR_FAIL_V(ERR_CANT_CREATE);
+		}
+		RD::AttachmentFormat attachment;
+		attachment.format = RD::DATA_FORMAT_R8G8B8A8_UNORM;
+		attachment.usage_flags = RD::TEXTURE_USAGE_SAMPLING_BIT | RD::TEXTURE_USAGE_COLOR_ATTACHMENT_BIT | RD::TEXTURE_USAGE_CAN_COPY_FROM_BIT;
+		RD::FramebufferFormatID framebuffer_format = rd->framebuffer_format_create(Vector<RD::AttachmentFormat>({ attachment }));
+		ExternalTextures::Pipeline pipeline;
+		pipeline.shader = shader;
+		pipeline.pipeline = rd->render_pipeline_create(shader, framebuffer_format, RD::INVALID_ID, RD::RENDER_PRIMITIVE_TRIANGLES, RD::PipelineRasterizationState(), RD::PipelineMultisampleState(), RD::PipelineDepthStencilState(), RD::PipelineColorBlendState::create_disabled());
+		if (pipeline.pipeline.is_null()) {
+			rd->free_rid(shader);
+			rd->free_rid(imported);
+			ERR_FAIL_V(ERR_CANT_CREATE);
+		}
+		conversion = &external_textures.pipelines.insert(sampler, pipeline)->value;
+	}
+	RD::Uniform uniform(RD::UNIFORM_TYPE_SAMPLER_WITH_TEXTURE, 0, Vector<RID>({ sampler, imported }));
+	RID uniform_set = rd->uniform_set_create(Vector<RD::Uniform>({ uniform }), conversion->shader, 0, true);
+	if (uniform_set.is_null()) {
+		rd->free_rid(conversion->shader);
+		external_textures.pipelines.erase(sampler);
+		rd->free_rid(imported);
+		ERR_FAIL_V(ERR_CANT_CREATE);
+	}
+
 	Texture *tex = texture_owner.get_or_null(p_texture);
 	RID replacement;
 	Texture *destination = tex;
@@ -1879,75 +1913,42 @@ Error TextureStorage::_texture_external_convert(RID p_texture, const Ref<Externa
 		}
 	}
 	RID framebuffer = FramebufferCacheRD::get_singleton()->get_cache(destination->rd_texture);
-	ExternalTextures::Pipeline *conversion = external_textures.pipelines.getptr(sampler);
-	if (!conversion) {
-		Vector<uint8_t> bytecode = external_textures.shader.version_get_shader_bytecode(external_textures.shader_version, 0);
-		RD::PipelineImmutableSampler immutable;
-		immutable.uniform_type = RD::UNIFORM_TYPE_SAMPLER_WITH_TEXTURE;
-		immutable.samplers.push_back(sampler);
-		RID shader = rd->shader_create_from_bytecode_with_samplers(bytecode, RID(), Vector<RD::PipelineImmutableSampler>({ immutable }));
-		if (shader.is_null()) {
-			rd->free_rid(imported);
-			if (replacement.is_valid()) {
-				texture_free(replacement);
-			}
-			ERR_FAIL_V(ERR_CANT_CREATE);
-		}
-		ExternalTextures::Pipeline pipeline;
-		pipeline.shader = shader;
-		pipeline.pipeline = rd->render_pipeline_create(shader, rd->framebuffer_get_format(framebuffer), RD::INVALID_ID, RD::RENDER_PRIMITIVE_TRIANGLES, RD::PipelineRasterizationState(), RD::PipelineMultisampleState(), RD::PipelineDepthStencilState(), RD::PipelineColorBlendState::create_disabled());
-		conversion = &external_textures.pipelines.insert(sampler, pipeline)->value;
-	}
-	RD::Uniform uniform(RD::UNIFORM_TYPE_SAMPLER_WITH_TEXTURE, 0, Vector<RID>({ sampler, imported }));
-	RID uniform_set = rd->uniform_set_create(Vector<RD::Uniform>({ uniform }), conversion->shader, 0, true);
-	Error error = rd->texture_external_acquire(imported);
-	if (error != OK) {
+	if (framebuffer.is_null()) {
 		rd->free_rid(imported);
 		if (replacement.is_valid()) {
 			texture_free(replacement);
 		}
-		return error;
+		ERR_FAIL_V(ERR_CANT_CREATE);
 	}
 
+	rd->texture_external_acquire(imported);
 	rd->draw_command_begin_label("External Texture Conversion");
 	RD::DrawListID draw_list = rd->draw_list_begin(framebuffer, RD::DRAW_IGNORE_COLOR_0);
-	bool converted = draw_list != RD::INVALID_ID;
-	if (converted) {
-		rd->draw_list_bind_render_pipeline(draw_list, conversion->pipeline);
-		rd->draw_list_bind_uniform_set(draw_list, uniform_set, 0);
-		ExternalTextures::PushConstant push_constant = {};
-		push_constant.uv_offset[0] = float(crop.position.x) / properties.width;
-		push_constant.uv_offset[1] = float(crop.position.y) / properties.height;
-		push_constant.uv_scale[0] = float(crop.size.width) / properties.width;
-		push_constant.uv_scale[1] = float(crop.size.height) / properties.height;
-		rd->draw_list_set_push_constant(draw_list, &push_constant, sizeof(push_constant));
-		rd->draw_list_draw(draw_list, false, 1, 3);
-		rd->draw_list_end();
-	}
+	rd->draw_list_bind_render_pipeline(draw_list, conversion->pipeline);
+	rd->draw_list_bind_uniform_set(draw_list, uniform_set, 0);
+	ExternalTextures::PushConstant push_constant = {};
+	push_constant.uv_offset[0] = float(crop.position.x) / properties.width;
+	push_constant.uv_offset[1] = float(crop.position.y) / properties.height;
+	push_constant.uv_scale[0] = float(crop.size.width) / properties.width;
+	push_constant.uv_scale[1] = float(crop.size.height) / properties.height;
+	rd->draw_list_set_push_constant(draw_list, &push_constant, sizeof(push_constant));
+	rd->draw_list_draw(draw_list, false, 1, 3);
+	rd->draw_list_end();
 	rd->draw_command_end_label();
 	rd->texture_external_release(imported);
-	if (converted) {
-		bool changed = tex->width != crop.size.width || tex->height != crop.size.height;
-		if (replacement.is_valid()) {
-			texture_replace(p_texture, replacement);
-			replacement = RID();
-			tex = texture_owner.get_or_null(p_texture);
-		}
-		if (changed) {
-			MessageQueue::get_main_singleton()->push_callable(p_submission->changed, crop.size);
-		}
-#ifdef TOOLS_ENABLED
-		tex->image_cache_2d.unref();
-#endif
-		decal_atlas_mark_draw_on_texture(p_texture);
-		area_light_atlas_mark_dirty_on_texture(p_texture);
-	}
-	rd->free_rid(imported);
 	if (replacement.is_valid()) {
-		texture_free(replacement);
+		texture_replace(p_texture, replacement);
+		tex = texture_owner.get_or_null(p_texture);
+		MessageQueue::get_main_singleton()->push_callable(p_submission->changed, crop.size);
 	}
+#ifdef TOOLS_ENABLED
+	tex->image_cache_2d.unref();
+#endif
+	decal_atlas_mark_draw_on_texture(p_texture);
+	area_light_atlas_mark_dirty_on_texture(p_texture);
+	rd->free_rid(imported);
 	external_texture_conversions_in_flight++;
-	rd->frame_completed_callback_add(callable_mp_static(&TextureStorage::_texture_external_complete).bind(p_submission, int(converted ? RSE::EXTERNAL_TEXTURE_COMPLETION_COMPLETED : RSE::EXTERNAL_TEXTURE_COMPLETION_FAILED)));
+	rd->frame_completed_callback_add(callable_mp_static(&TextureStorage::_texture_external_complete).bind(p_submission, int(RSE::EXTERNAL_TEXTURE_COMPLETION_COMPLETED)));
 	return OK;
 }
 

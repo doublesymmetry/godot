@@ -5742,12 +5742,13 @@ RD::DataFormat TextureStorage::render_target_get_color_format(bool p_use_hdr, bo
 	}
 }
 
+bool TextureStorage::render_targets_use_storage = true;
+
 uint32_t TextureStorage::render_target_get_color_usage_bits(bool p_msaa) {
 	if (p_msaa) {
 		return RD::TEXTURE_USAGE_COLOR_ATTACHMENT_BIT;
 	} else {
-		// FIXME: Storage bit should only be requested when FSR is required.
-		return RD::TEXTURE_USAGE_SAMPLING_BIT | RD::TEXTURE_USAGE_COLOR_ATTACHMENT_BIT | RD::TEXTURE_USAGE_CAN_COPY_FROM_BIT | RD::TEXTURE_USAGE_STORAGE_BIT;
+		return RD::TEXTURE_USAGE_SAMPLING_BIT | RD::TEXTURE_USAGE_COLOR_ATTACHMENT_BIT | RD::TEXTURE_USAGE_CAN_COPY_FROM_BIT | (render_targets_use_storage ? RD::TEXTURE_USAGE_STORAGE_BIT : 0);
 	}
 }
 

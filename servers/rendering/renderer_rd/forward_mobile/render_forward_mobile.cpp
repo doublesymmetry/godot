@@ -3599,6 +3599,7 @@ void RenderForwardMobile::_update_shader_quality_settings() {
 
 RenderForwardMobile::RenderForwardMobile() {
 	singleton = this;
+	RendererRD::TextureStorage::render_targets_use_storage = false;
 
 	disable_ubershaders = RD::get_singleton()->get_driver_workarounds().disable_ubershaders;
 	if (disable_ubershaders) {

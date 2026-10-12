@@ -978,6 +978,8 @@ public:
 	void render_target_set_backbuffer_uniform_set(RID p_render_target, RID p_uniform_set);
 
 	static RD::DataFormat render_target_get_color_format(bool p_use_hdr, bool p_srgb);
+	// Compute effects write render targets as storage; renderers without them clear this before creating any.
+	static bool render_targets_use_storage;
 	static uint32_t render_target_get_color_usage_bits(bool p_msaa);
 
 	virtual void texture_2d_attach_streaming_state(RID p_texture, RID p_streaming_state) override;

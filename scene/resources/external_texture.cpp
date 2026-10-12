@@ -93,6 +93,7 @@ Size2 ExternalTexture::get_size() const {
 }
 
 void ExternalTexture::set_external_buffer_id(uint64_t p_external_buffer) {
+	ERR_FAIL_COND_MSG(_uses_rendering_device() && p_external_buffer != 0, "External buffer IDs are only supported by the Compatibility renderer. Use ExternalTexture.submit_hardware_buffer() instead.");
 	MutexLock lock(mutex);
 	if (p_external_buffer != external_buffer) {
 		external_buffer = p_external_buffer;

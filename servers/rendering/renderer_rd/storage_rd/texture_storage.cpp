@@ -1313,11 +1313,11 @@ void TextureStorage::texture_3d_initialize(RID p_texture, Image::Format p_format
 }
 
 void TextureStorage::texture_external_initialize(RID p_texture, int p_width, int p_height, uint64_t p_external_buffer) {
-	_texture_external_initialize(p_texture, p_width, p_height, true);
 	ERR_FAIL_COND_MSG(p_external_buffer != 0, "External buffer IDs are only supported by the Compatibility renderer. Use ExternalTexture.submit_hardware_buffer() instead.");
+	_texture_external_initialize(p_texture, p_width, p_height);
 }
 
-void TextureStorage::_texture_external_initialize(RID p_texture, int p_width, int p_height, bool p_clear) {
+void TextureStorage::_texture_external_initialize(RID p_texture, int p_width, int p_height) {
 	Texture initial = {};
 	initial.is_external = true;
 	initial.type = TYPE_2D;
@@ -1347,11 +1347,9 @@ void TextureStorage::_texture_external_initialize(RID p_texture, int p_width, in
 	format.shareable_formats.push_back(tex->rd_format);
 	format.shareable_formats.push_back(tex->rd_format_srgb);
 	Vector<Vector<uint8_t>> data;
-	if (p_clear) {
-		Ref<Image> image = Image::create_empty(p_width, p_height, false, Image::FORMAT_RGBA8);
-		image->fill(Color(0, 0, 0, 1));
-		data.push_back(image->get_data());
-	}
+	Ref<Image> image = Image::create_empty(p_width, p_height, false, Image::FORMAT_RGBA8);
+	image->fill(Color(0, 0, 0, 1));
+	data.push_back(image->get_data());
 	tex->rd_texture = rd->texture_create(format, RD::TextureView(), data);
 	ERR_FAIL_COND(tex->rd_texture.is_null());
 	RD::TextureView srgb_view;
@@ -1760,20 +1758,6 @@ void TextureStorage::texture_3d_update(RID p_texture, const Vector<Ref<Image>> &
 
 void TextureStorage::texture_external_update(RID p_texture, int p_width, int p_height, uint64_t p_external_buffer) {
 	ERR_FAIL_COND_MSG(p_external_buffer != 0, "External buffer IDs are only supported by the Compatibility renderer. Use ExternalTexture.submit_hardware_buffer() instead.");
-	Texture *tex = texture_owner.get_or_null(p_texture);
-	ERR_FAIL_NULL(tex);
-	ERR_FAIL_COND(!tex->is_external);
-	if (tex->width == p_width && tex->height == p_height) {
-		return;
-	}
-	RID replacement = texture_allocate();
-	texture_external_initialize(replacement, p_width, p_height, 0);
-	Texture *replacement_tex = texture_owner.get_or_null(replacement);
-	if (replacement_tex->rd_texture.is_null()) {
-		texture_free(replacement);
-		ERR_FAIL_MSG("Could not resize the external texture.");
-	}
-	texture_replace(p_texture, replacement);
 }
 
 void TextureStorage::texture_external_submit(RID p_texture, const Ref<ExternalTextureSubmission> &p_submission) {
@@ -1862,7 +1846,7 @@ Error TextureStorage::_texture_external_convert(RID p_texture, const Ref<Externa
 	Texture *destination = tex;
 	if (tex->width != crop.size.width || tex->height != crop.size.height) {
 		replacement = texture_allocate();
-		_texture_external_initialize(replacement, crop.size.width, crop.size.height, false);
+		_texture_external_initialize(replacement, crop.size.width, crop.size.height);
 		destination = texture_owner.get_or_null(replacement);
 		if (destination->rd_texture.is_null()) {
 			rd->free_rid(imported);

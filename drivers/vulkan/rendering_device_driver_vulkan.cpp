@@ -2910,14 +2910,11 @@ RDD::SamplerID RenderingDeviceDriverVulkan::texture_set_external_conversion(Text
 void RenderingDeviceDriverVulkan::command_texture_external_acquire(CommandBufferID p_cmd_buffer, TextureID p_texture) {
 	const CommandBufferInfo *command_buffer = (const CommandBufferInfo *)p_cmd_buffer.id;
 	const TextureInfo *texture = (const TextureInfo *)p_texture.id;
-	// Wait for earlier releases of aliases of the same buffer before acquiring it again.
-	vkCmdPipelineBarrier(command_buffer->vk_command_buffer, VK_PIPELINE_STAGE_ALL_COMMANDS_BIT, VK_PIPELINE_STAGE_ALL_COMMANDS_BIT, 0, 0, nullptr, 0, nullptr, 0, nullptr);
-	// GENERAL is the producer handoff layout, as in Android CTS.
 	VkImageMemoryBarrier barrier = {};
 	barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
-	barrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
+	barrier.dstAccessMask = VK_ACCESS_MEMORY_READ_BIT | VK_ACCESS_MEMORY_WRITE_BIT;
 	barrier.oldLayout = VK_IMAGE_LAYOUT_GENERAL;
-	barrier.newLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+	barrier.newLayout = VK_IMAGE_LAYOUT_GENERAL;
 	barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_FOREIGN_EXT;
 	barrier.dstQueueFamilyIndex = command_buffer->queue_family_index;
 	barrier.image = texture->vk_image;
@@ -2930,8 +2927,8 @@ void RenderingDeviceDriverVulkan::command_texture_external_release(CommandBuffer
 	const TextureInfo *texture = (const TextureInfo *)p_texture.id;
 	VkImageMemoryBarrier barrier = {};
 	barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
-	barrier.srcAccessMask = VK_ACCESS_SHADER_READ_BIT;
-	barrier.oldLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+	barrier.srcAccessMask = VK_ACCESS_MEMORY_READ_BIT | VK_ACCESS_MEMORY_WRITE_BIT;
+	barrier.oldLayout = VK_IMAGE_LAYOUT_GENERAL;
 	barrier.newLayout = VK_IMAGE_LAYOUT_GENERAL;
 	barrier.srcQueueFamilyIndex = command_buffer->queue_family_index;
 	barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_FOREIGN_EXT;

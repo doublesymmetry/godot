@@ -1943,8 +1943,8 @@ RID RenderingDevice::texture_create_from_external_buffer(uint64_t p_buffer, Exte
 	texture.read_aspect_flags = RDD::TEXTURE_ASPECT_COLOR_BIT;
 	texture.barrier_aspect_flags = RDD::TEXTURE_ASPECT_COLOR_BIT;
 	_texture_make_mutable(&texture, RID());
-	// The producer owns the image until the first acquire.
-	texture.draw_tracker->usage = RDG::RESOURCE_USAGE_EXTERNAL_RELEASE;
+	// The producer hands off the image in GENERAL layout.
+	texture.draw_tracker->usage = RDG::RESOURCE_USAGE_GENERAL;
 	texture_memory.add(driver->texture_get_allocation_size(texture.driver_id));
 	return texture_owner.make_rid(texture);
 }
@@ -1967,25 +1967,25 @@ RID RenderingDevice::texture_set_external_conversion(RID p_texture, ExternalText
 Error RenderingDevice::texture_external_acquire(RID p_texture) {
 	ERR_RENDER_THREAD_GUARD_V(ERR_UNAVAILABLE);
 	_THREAD_SAFE_METHOD_
-	ERR_FAIL_COND_V_MSG(draw_list.active || compute_list.active || raytracing_list.active, ERR_INVALID_PARAMETER, "Acquiring external textures is forbidden during creation of a command list.");
 	Texture *texture = texture_owner.get_or_null(p_texture);
-	ERR_FAIL_COND_V(!texture || texture->external_sampler.is_null(), ERR_INVALID_PARAMETER);
-	ERR_FAIL_COND_V(acquired_external_texture.is_valid(), ERR_ALREADY_IN_USE);
-	draw_graph.add_texture_external_transfer(texture->draw_tracker, true);
-	acquired_external_texture = p_texture;
-	return OK;
+	ERR_FAIL_COND_V(!texture || !texture->is_external, ERR_INVALID_PARAMETER);
+	CallbackResource resource = { p_texture, CALLBACK_RESOURCE_TYPE_TEXTURE, CALLBACK_RESOURCE_USAGE_GENERAL };
+	return driver_callback_add([](RenderingDeviceDriver *p_driver, RDD::CommandBufferID p_command_buffer, void *p_userdata) {
+		p_driver->command_texture_external_acquire(p_command_buffer, RDD::TextureID(uint64_t(p_userdata)));
+	},
+			(void *)texture->driver_id.id, VectorView<CallbackResource>(&resource, 1));
 }
 
 Error RenderingDevice::texture_external_release(RID p_texture) {
 	ERR_RENDER_THREAD_GUARD_V(ERR_UNAVAILABLE);
 	_THREAD_SAFE_METHOD_
-	ERR_FAIL_COND_V_MSG(draw_list.active || compute_list.active || raytracing_list.active, ERR_INVALID_PARAMETER, "Releasing external textures is forbidden during creation of a command list.");
-	ERR_FAIL_COND_V(acquired_external_texture != p_texture, ERR_INVALID_PARAMETER);
 	Texture *texture = texture_owner.get_or_null(p_texture);
-	ERR_FAIL_NULL_V(texture, ERR_INVALID_PARAMETER);
-	draw_graph.add_texture_external_transfer(texture->draw_tracker, false);
-	acquired_external_texture = RID();
-	return OK;
+	ERR_FAIL_COND_V(!texture || !texture->is_external, ERR_INVALID_PARAMETER);
+	CallbackResource resource = { p_texture, CALLBACK_RESOURCE_TYPE_TEXTURE, CALLBACK_RESOURCE_USAGE_GENERAL };
+	return driver_callback_add([](RenderingDeviceDriver *p_driver, RDD::CommandBufferID p_command_buffer, void *p_userdata) {
+		p_driver->command_texture_external_release(p_command_buffer, RDD::TextureID(uint64_t(p_userdata)));
+	},
+			(void *)texture->driver_id.id, VectorView<CallbackResource>(&resource, 1));
 }
 
 RID RenderingDevice::texture_create_from_extension(TextureType p_type, DataFormat p_format, TextureSamples p_samples, BitField<RenderingDevice::TextureUsageBits> p_usage, uint64_t p_image, uint64_t p_width, uint64_t p_height, uint64_t p_depth, uint64_t p_layers, uint64_t p_mipmaps) {
@@ -10676,4 +10676,4 @@ static_assert(ENUM_MEMBERS_EQUAL(RD::CALLBACK_RESOURCE_USAGE_STORAGE_IMAGE_READ_
 static_assert(ENUM_MEMBERS_EQUAL(RD::CALLBACK_RESOURCE_USAGE_ATTACHMENT_COLOR_READ_WRITE, RDG::RESOURCE_USAGE_ATTACHMENT_COLOR_READ_WRITE));
 static_assert(ENUM_MEMBERS_EQUAL(RD::CALLBACK_RESOURCE_USAGE_ATTACHMENT_DEPTH_STENCIL_READ_WRITE, RDG::RESOURCE_USAGE_ATTACHMENT_DEPTH_STENCIL_READ_WRITE));
 static_assert(ENUM_MEMBERS_EQUAL(RD::CALLBACK_RESOURCE_USAGE_GENERAL, RDG::RESOURCE_USAGE_GENERAL));
-static_assert(ENUM_MEMBERS_EQUAL(RD::CALLBACK_RESOURCE_USAGE_MAX, RDG::RESOURCE_USAGE_EXTERNAL_ACQUIRE));
+static_assert(ENUM_MEMBERS_EQUAL(RD::CALLBACK_RESOURCE_USAGE_MAX, RDG::RESOURCE_USAGE_MAX));

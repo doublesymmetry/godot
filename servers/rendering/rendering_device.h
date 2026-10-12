@@ -415,7 +415,6 @@ public:
 	};
 
 	RID_Owner<Texture, true> texture_owner;
-	RID acquired_external_texture;
 	uint32_t texture_upload_region_size_px = 0;
 	uint32_t texture_download_region_size_px = 0;
 

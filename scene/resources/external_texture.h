@@ -65,11 +65,10 @@ private:
 	Size2 size = Size2(256, 256);
 	uint64_t external_buffer = 0;
 	Size2i resolved_size;
-	bool resolved_alpha = false;
 	bool using_hardware_buffer = false;
 
 	void _ensure_created() const;
-	void _hardware_buffer_changed(const Size2i &p_size, bool p_has_alpha);
+	void _hardware_buffer_changed(const Size2i &p_size);
 
 protected:
 	static void _bind_methods();

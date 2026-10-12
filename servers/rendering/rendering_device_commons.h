@@ -513,7 +513,6 @@ public:
 		uint32_t width = 0;
 		uint32_t height = 0;
 		bool is_yuv = false;
-		bool has_alpha = false;
 		ExternalTextureModel suggested_model = EXTERNAL_TEXTURE_MODEL_RGB_IDENTITY;
 		ExternalTextureRange suggested_range = EXTERNAL_TEXTURE_RANGE_FULL;
 	};

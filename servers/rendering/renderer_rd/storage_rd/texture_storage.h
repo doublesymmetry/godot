@@ -184,7 +184,6 @@ private:
 		bool is_render_target;
 		bool is_proxy;
 		bool is_external = false;
-		bool external_has_alpha = false;
 
 		Ref<Image> image_cache_2d;
 		String path;
@@ -259,8 +258,6 @@ private:
 		struct PushConstant {
 			float uv_offset[2];
 			float uv_scale[2];
-			uint32_t force_opaque;
-			uint32_t pad[3];
 		};
 		struct Pipeline {
 			RID shader;

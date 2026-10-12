@@ -32,16 +32,9 @@ layout(location = 0) out vec4 frag_color;
 layout(push_constant, std430) uniform Params {
 	vec2 uv_offset;
 	vec2 uv_scale;
-	uint force_opaque;
-	uint pad1;
-	uint pad2;
-	uint pad3;
 }
 params;
 
 void main() {
 	frag_color = texture(source_color, params.uv_offset + uv_interp * params.uv_scale);
-	if (params.force_opaque != 0u) {
-		frag_color.a = 1.0;
-	}
 }

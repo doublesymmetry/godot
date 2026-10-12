@@ -1885,7 +1885,6 @@ Error TextureStorage::_texture_external_convert(RID p_texture, const Ref<Externa
 		return error;
 	}
 
-	const bool has_alpha = model == RD::EXTERNAL_TEXTURE_MODEL_RGB_IDENTITY && properties.has_alpha;
 	rd->draw_command_begin_label("External Texture Conversion");
 	RD::DrawListID draw_list = rd->draw_list_begin(framebuffer, RD::DRAW_IGNORE_COLOR_0);
 	bool converted = draw_list != RD::INVALID_ID;
@@ -1897,7 +1896,6 @@ Error TextureStorage::_texture_external_convert(RID p_texture, const Ref<Externa
 		push_constant.uv_offset[1] = float(crop.position.y) / properties.height;
 		push_constant.uv_scale[0] = float(crop.size.width) / properties.width;
 		push_constant.uv_scale[1] = float(crop.size.height) / properties.height;
-		push_constant.force_opaque = !has_alpha;
 		rd->draw_list_set_push_constant(draw_list, &push_constant, sizeof(push_constant));
 		rd->draw_list_draw(draw_list, false, 1, 3);
 		rd->draw_list_end();
@@ -1905,15 +1903,14 @@ Error TextureStorage::_texture_external_convert(RID p_texture, const Ref<Externa
 	rd->draw_command_end_label();
 	rd->texture_external_release(imported);
 	if (converted) {
-		bool changed = tex->width != crop.size.width || tex->height != crop.size.height || tex->external_has_alpha != has_alpha;
+		bool changed = tex->width != crop.size.width || tex->height != crop.size.height;
 		if (replacement.is_valid()) {
 			texture_replace(p_texture, replacement);
 			replacement = RID();
 			tex = texture_owner.get_or_null(p_texture);
 		}
-		tex->external_has_alpha = has_alpha;
 		if (changed) {
-			MessageQueue::get_main_singleton()->push_callable(p_submission->changed, crop.size, has_alpha);
+			MessageQueue::get_main_singleton()->push_callable(p_submission->changed, crop.size);
 		}
 #ifdef TOOLS_ENABLED
 		tex->image_cache_2d.unref();

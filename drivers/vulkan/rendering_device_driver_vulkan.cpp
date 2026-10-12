@@ -2684,29 +2684,6 @@ static int _get_ycbcr_subsampling(VkFormat p_format) {
 	}
 }
 
-static bool _format_has_alpha(VkFormat p_format) {
-	switch (p_format) {
-		case VK_FORMAT_R4G4B4A4_UNORM_PACK16:
-		case VK_FORMAT_B4G4R4A4_UNORM_PACK16:
-		case VK_FORMAT_R5G5B5A1_UNORM_PACK16:
-		case VK_FORMAT_B5G5R5A1_UNORM_PACK16:
-		case VK_FORMAT_A1R5G5B5_UNORM_PACK16:
-		case VK_FORMAT_A4R4G4B4_UNORM_PACK16:
-		case VK_FORMAT_A4B4G4R4_UNORM_PACK16:
-		case VK_FORMAT_A1B5G5R5_UNORM_PACK16:
-		case VK_FORMAT_R8G8B8A8_UNORM:
-		case VK_FORMAT_R8G8B8A8_SRGB:
-		case VK_FORMAT_B8G8R8A8_UNORM:
-		case VK_FORMAT_B8G8R8A8_SRGB:
-		case VK_FORMAT_A2B10G10R10_UNORM_PACK32:
-		case VK_FORMAT_R16G16B16A16_SFLOAT:
-		case VK_FORMAT_R10X6G10X6B10X6A10X6_UNORM_4PACK16:
-			return true;
-		default:
-			return false;
-	}
-}
-
 void RenderingDeviceDriverVulkan::external_buffer_acquire(uint64_t p_buffer) {
 	AndroidHardwareBuffer_acquire((AHardwareBuffer *)p_buffer);
 }
@@ -2854,7 +2831,6 @@ RDD::TextureID RenderingDeviceDriverVulkan::texture_create_from_external_buffer(
 	r_properties.format = _external_texture_data_format(format);
 	texture->rd_format = r_properties.format;
 	r_properties.is_yuv = is_yuv;
-	r_properties.has_alpha = external_format || _format_has_alpha(format);
 	// VkAndroidHardwareBufferFormatPropertiesANDROID suggestions describe external conversions; defined RGB uses identity.
 	r_properties.suggested_model = (external_format || is_yuv) ? (ExternalTextureModel)format_properties.suggestedYcbcrModel : EXTERNAL_TEXTURE_MODEL_RGB_IDENTITY;
 	r_properties.suggested_range = (external_format || is_yuv) ? (ExternalTextureRange)format_properties.suggestedYcbcrRange : EXTERNAL_TEXTURE_RANGE_FULL;

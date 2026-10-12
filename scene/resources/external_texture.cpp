@@ -124,8 +124,7 @@ int ExternalTexture::get_height() const {
 }
 
 bool ExternalTexture::has_alpha() const {
-	MutexLock lock(mutex);
-	return resolved_alpha;
+	return false;
 }
 
 RID ExternalTexture::get_rid() const {
@@ -163,11 +162,10 @@ void ExternalTexture::_ensure_created() const {
 	}
 }
 
-void ExternalTexture::_hardware_buffer_changed(const Size2i &p_size, bool p_has_alpha) {
+void ExternalTexture::_hardware_buffer_changed(const Size2i &p_size) {
 	{
 		MutexLock lock(mutex);
 		resolved_size = p_size;
-		resolved_alpha = p_has_alpha;
 	}
 	emit_changed();
 }
